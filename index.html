@@ -5,7 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Kagu ÜTK liiniprofiilid</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0/dist/duckdb-mvp.js"></script>
+<script type="module">
+// DuckDB-WASM ESM import
+import * as duckdb from 'https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0/+esm';
+window._duckdb = duckdb;
+// Käivita rakendus alles pärast DuckDB laadimist
+window.addEventListener('load', () => loadData());
+</script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -455,7 +461,7 @@ async function loadData() {
 }
 
 async function initDuckDB(periods) {
-  // Initsialiseeri DuckDB-WASM
+  const duckdb = window._duckdb;
   const JSDELIVR = 'https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0/dist/';
   const bundle = await duckdb.selectBundle({
     mvp: { mainModule: JSDELIVR + 'duckdb-mvp.wasm', mainWorker: JSDELIVR + 'duckdb-browser-mvp.worker.js' },
@@ -982,8 +988,7 @@ function renderTable() {
 if (ALL_LINES.length) { lineSel.value = ALL_LINES[0]; selectLine(ALL_LINES[0]); }
 } // end initApp()
 
-// Käivita rakendus
-loadData();
+// Rakendus käivitub pärast DuckDB laadimist (vt <script type="module"> päises)
 </script>
 </body>
 </html>
