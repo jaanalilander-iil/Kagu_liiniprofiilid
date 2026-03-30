@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="et">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Liinide väljumisprofiilid</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --blue:    #0A54B6;
+    --green:   #61CE85;
+    --gold:    #CFB53C;
+    --purple:  #9966CB;
+    --bg:      #f4f5f7;
+    --bg2:     #ffffff;
+    --bg3:     #f0f1f4;
+    --border:  #dde0e7;
+    --text:    #1c2130;
+    --muted:   #6b7280;
+    --blue-dk: #1a56b0;
+    --green-dk:#1a8a4a;
+    --gold-dk: #7a6000;
+    --pur-dk:  #6040a0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    min-height: 100vh;
+  }
+
+  header {
+    background: #fff;
+    border-bottom: 1px solid var(--border);
+  }
+  .header-title-row {
+    padding: 14px 24px 10px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+  }
+  .logo {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    white-space: nowrap;
+    line-height: 1;
+  }
+  .logo-sub {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted);
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+  }
+  .header-controls-row {
+    padding: 8px 24px;
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .header-controls-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    flex: 1;
+  }
+  .ctrl-group { display: flex; flex-direction: column; gap: 3px; }
+  .ctrl-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    font-weight: 500;
+  }
+  select, .search-box {
+    background: #fff;
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    padding: 6px 10px;
+    border-radius: 5px;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    cursor: pointer;
+  }
+  select:focus, .search-box:focus {
+    border-color: var(--blue);
+    box-shadow: 0 0 0 2px rgba(10,84,182,0.1);
+  }
+  select:hover, .search-box:hover { border-color: #b0b8c8; }
+  #line-select  { min-width: 185px; }
+  #trip-select  { min-width: 190px; }
+  .search-box   { min-width: 130px; }
+
+  .tag {
+    font-size: 11px;
+    padding: 3px 9px;
+    border-radius: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .tag-blue  { background: #e8f0fb; color: var(--blue-dk); border: 1px solid #c5d8f5; }
+  .tag-green { background: #eaf7f0; color: var(--green-dk); border: 1px solid #b6e8cc; }
+
+  main { padding: 16px 24px; display: flex; flex-direction: column; gap: 12px; }
+
+  .stats-row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .stat-card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 10px 16px;
+    min-width: 130px;
+  }
+  .stat-card .val {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 21px;
+    font-weight: 500;
+    line-height: 1;
+    letter-spacing: -0.02em;
+  }
+  .stat-card .lbl {
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    font-weight: 500;
+  }
+  .val-blue   { color: var(--blue-dk); }
+  .val-green  { color: var(--green-dk); }
+  .val-gold   { color: var(--gold-dk); }
+  .val-purple { color: var(--pur-dk); }
+
+  .panel {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+  }
+  .panel-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .panel-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .panel-sub {
+    font-size: 11px;
+    color: var(--muted);
+    font-weight: 400;
+  }
+
+  .legend {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); }
+  .legend-dot  { width: 11px; height: 11px; border-radius: 2px; flex-shrink: 0; }
+  .legend-line { width: 18px; height: 3px; border-radius: 2px; flex-shrink: 0; }
+
+  .canvas-container { position: relative; width: 100%; height: 320px; }
+
+  .detail-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .detail-table thead th {
+    background: var(--bg3);
+    color: var(--muted);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 7px 12px;
+    text-align: right;
+    border-bottom: 1px solid var(--border);
+    font-weight: 600;
+    position: sticky; top: 0; z-index: 1;
+  }
+  .detail-table thead th:first-child,
+  .detail-table thead th:nth-child(2) { text-align: left; }
+  .detail-table td {
+    padding: 5px 12px;
+    border-bottom: 1px solid #f2f3f6;
+    text-align: right;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+  }
+  .detail-table td:first-child {
+    text-align: left; color: var(--muted);
+    font-family: 'Inter', sans-serif; width: 32px;
+  }
+  .detail-table td:nth-child(2) {
+    text-align: left; font-family: 'Inter', sans-serif; color: var(--text);
+  }
+  .detail-table tr:hover td { background: #f8f9fb; }
+  .detail-table tr:last-child td { border-bottom: none; }
+  .pos    { color: var(--blue-dk); }
+  .neg    { color: var(--gold-dk); }
+  .pardal { color: var(--green-dk); }
+
+  .empty-state {
+    display: flex; align-items: center; justify-content: center;
+    height: 80px; color: var(--muted); font-size: 13px; gap: 8px;
+  }
+  .cal-dropdown-wrap { position: relative; }
+  .cal-trigger {
+    display: flex; align-items: center; gap: 8px;
+    background: #fff; border: 1px solid var(--border);
+    border-radius: 5px; padding: 6px 10px; cursor: pointer;
+    font-family: 'Inter', sans-serif; font-size: 13px; color: var(--text);
+    transition: border-color 0.15s;
+    white-space: nowrap; min-width: 220px;
+  }
+  .cal-trigger:hover { border-color: #b0b8c8; }
+  .cal-trigger.open { border-color: var(--blue); box-shadow: 0 0 0 2px rgba(10,84,182,0.1); }
+  .cal-trigger-icon { color: var(--muted); font-size: 13px; flex-shrink: 0; }
+  .cal-trigger-all {
+    display: inline-block; font-size: 10px; font-weight: 500;
+    padding: 2px 7px; border-radius: 10px;
+    background: #e8f0fb; color: var(--blue-dk);
+    border: 1px solid #c5d8f5; white-space: nowrap;
+  }
+  .cal-popup {
+    position: absolute; top: calc(100% + 6px); left: 0;
+    background: #fff; border: 1px solid var(--border);
+    border-radius: 8px; padding: 14px; z-index: 200;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    display: none; min-width: 260px;
+  }
+  .cal-popup.open { display: block; }
+  .cal-popup-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .cal-nav {
+    background: none; border: 1px solid var(--border);
+    border-radius: 4px; width: 26px; height: 26px;
+    cursor: pointer; font-size: 14px; color: var(--text);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Inter', sans-serif;
+  }
+  .cal-nav:hover { background: var(--bg3); }
+  .cal-month-title { font-size: 12px; font-weight: 600; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 32px); gap: 2px; }
+  .cal-dow { text-align: center; font-size: 10px; color: var(--muted); padding: 2px 0 6px; }
+  .cal-day {
+    width: 32px; height: 32px; display: flex; align-items: center;
+    justify-content: center; font-size: 11px; border-radius: 50%;
+    cursor: pointer; color: var(--text);
+  }
+  .cal-day:hover:not(.cal-empty):not(.cal-disabled) { background: var(--bg3); }
+  .cal-day.cal-empty { cursor: default; }
+  .cal-day.cal-disabled { color: var(--muted); opacity: 0.35; cursor: default; }
+  .cal-day.cal-in-range { background: #e8f0fb; color: var(--blue-dk); border-radius: 0; }
+  .cal-day.cal-start { background: var(--blue); color: #fff; border-radius: 50% 0 0 50%; }
+  .cal-day.cal-end { background: var(--blue); color: #fff; border-radius: 0 50% 50% 0; }
+  .cal-day.cal-start.cal-end { border-radius: 50%; }
+  .cal-popup-footer {
+    margin-top: 10px; padding-top: 10px;
+    border-top: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .cal-btn-all {
+    font-size: 11px; font-weight: 500; padding: 4px 10px;
+    border-radius: 10px; border: 1px solid var(--border);
+    background: #fff; color: var(--text); cursor: pointer;
+  }
+  .cal-btn-all:hover { background: var(--bg3); }
+  .cal-btn-all.active { background: #e8f0fb; color: var(--blue-dk); border-color: #c5d8f5; }
+  .cal-hint { font-size: 10px; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-title-row">
+    <div class="logo">Liini profiilid</div>
+    <div class="logo-sub">Kagu ÜTK</div>
+  </div>
+  <div class="header-controls-row">
+    <div class="ctrl-group" id="period-ctrl-group">
+      <span class="ctrl-label">Periood</span>
+      <div class="cal-dropdown-wrap">
+        <div class="cal-trigger" id="cal-trigger">
+          <span class="cal-trigger-icon">&#128197;</span>
+          <span id="cal-trigger-text">Laen…</span>
+        </div>
+        <div class="cal-popup" id="cal-popup">
+          <div class="cal-popup-head">
+            <button class="cal-nav" id="cal-prev">&#8249;</button>
+            <span class="cal-month-title" id="cal-month-title"></span>
+            <button class="cal-nav" id="cal-next">&#8250;</button>
+          </div>
+          <div class="cal-grid">
+            <div class="cal-dow">E</div><div class="cal-dow">T</div><div class="cal-dow">K</div>
+            <div class="cal-dow">N</div><div class="cal-dow">R</div><div class="cal-dow">L</div><div class="cal-dow">P</div>
+          </div>
+          <div class="cal-grid" id="cal-days"></div>
+          <div class="cal-popup-footer">
+            <button class="cal-btn-all active" id="cal-btn-all">Kogu periood</button>
+            <span class="cal-hint" id="cal-hint"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-label">Otsi liini</span>
+      <input type="text" class="search-box" id="line-search" placeholder="nt. 20, 104…" autocomplete="off">
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-label">Liin</span>
+      <select id="line-select">
+        <option value="">— vali liin —</option>
+      </select>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-label">Väljumisaeg</span>
+      <select id="time-select">
+        <option value="all">Kõik kellaajad</option>
+      </select>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-label">Väljumine</span>
+      <select id="trip-select">
+        <option value="avg">⌀ Keskmine profiil</option>
+      </select>
+    </div>
+    <div style="margin-left:auto;display:flex;gap:7px;align-items:center;">
+      <span class="tag tag-blue"  id="tag-trips">—</span>
+      <span class="tag tag-green" id="tag-stops">—</span>
+    </div>
+  </div>
+</header>
+
+<main>
+<div id="loading-state" style="
+  display:flex; align-items:center; justify-content:center;
+  height:120px; color:#6b7280; font-size:14px; gap:10px;
+  background:#fff; border:1px solid #dde0e7; border-radius:8px;">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2">
+    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+  </svg>
+  Laen andmeid…
+</div>
+
+  <div class="stats-row">
+    <div class="stat-card"><div class="val val-blue"   id="s-board">—</div><div class="lbl">Sisenemised kokku</div></div>
+    <div class="stat-card"><div class="val val-gold"   id="s-alight">—</div><div class="lbl">Väljumised kokku</div></div>
+    <div class="stat-card"><div class="val val-green"  id="s-maxload">—</div><div class="lbl">Max täituvus</div></div>
+    <div class="stat-card"><div class="val val-purple" id="s-avgload">—</div><div class="lbl">Keskm. täituvus</div></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-title" id="chart-title-text">Sisenemised &amp; väljumised peatuste lõikes</span>
+      <span class="panel-sub"   id="chart-subtitle"></span>
+    </div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot"  style="background:#0A54B6"></div>Sisenemised</div>
+      <div class="legend-item"><div class="legend-dot"  style="background:#CFB53C"></div>Väljumised</div>
+      <div class="legend-item"><div class="legend-line" style="background:#61CE85"></div>Täituvus</div>
+    </div>
+    <div class="canvas-container"><canvas id="mainChart"></canvas></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header"><span class="panel-title">Peatuste andmed</span></div>
+    <div id="table-container">
+      <div class="empty-state">Vali liin</div>
+    </div>
+  </div>
+</main>
+
+<script>
+// ── Data loader ─────────────────────────────────────────────────────────────
+// Ootab manifest.json kaustas perioodide loendi jaoks.
+// Kasutaja valib kuupäevavahemiku -> laaditakse sobiv periood automaatselt.
+
+let RAW = {};
+let MANIFEST = null;
+let LOADED_PERIOD_FILE = null;
+
+// ── Kalender + andmete laadimine ────────────────────────────────────────────
+
+const MONTHS_ET = ['Jaanuar','Veebruar','Märts','Aprill','Mai','Juuni',
+                   'Juuli','August','September','Oktober','November','Detsember'];
+
+let RAW_FULL = {};
+let CAL_MIN = null, CAL_MAX = null;
+let calSelStart = null, calSelEnd = null;
+let calIsAll = true;
+let calViewYear, calViewMonth;
+
+function parsePeriodDates(label) {
+  const m = label.match(/(\d{4}-\d{2}-\d{2})[^\d]+(\d{4}-\d{2}-\d{2})/);
+  if (m) return { start: m[1], end: m[2] };
+  return null;
+}
+
+function isoToDate(s) { return s ? new Date(s + 'T00:00:00') : null; }
+function dateToIso(d) { return d ? d.toISOString().slice(0,10) : ''; }
+function sameDay(a, b) { return a && b && a.toDateString() === b.toDateString(); }
+function fmtDisplay(d) {
+  if (!d) return '';
+  return d.toLocaleDateString('et-EE', {day:'2-digit', month:'2-digit', year:'numeric'});
+}
+
+async function loadData() {
+  const loadingEl = document.getElementById('loading-state');
+  try {
+    const mResp = await fetch('manifest.json');
+    if (!mResp.ok) throw new Error('manifest.json: HTTP ' + mResp.status);
+    const raw = await mResp.json();
+    const periods = Array.isArray(raw) ? raw : (raw.periods || []);
+    if (!periods.length) throw new Error('manifest.json on tühi');
+    MANIFEST = { periods };
+
+    // Leia kogu andmestiku min/max
+    let absMin = '9999-99-99', absMax = '0000-00-00';
+    periods.forEach(p => {
+      const d = parsePeriodDates(p.label || p.file);
+      if (d) {
+        if (d.start < absMin) absMin = d.start;
+        if (d.end   > absMax) absMax = d.end;
+      }
+    });
+    CAL_MIN = isoToDate(absMin);
+    CAL_MAX = isoToDate(absMax);
+    calSelStart = new Date(CAL_MIN);
+    calSelEnd   = new Date(CAL_MAX);
+    calIsAll    = true;
+    calViewYear  = CAL_MIN.getFullYear();
+    calViewMonth = CAL_MIN.getMonth();
+
+    initCalendar();
+
+    // Laadi kõik perioodid (kogu periood vaikimisi)
+    await loadAllPeriods(periods);
+
+    if (loadingEl) loadingEl.remove();
+    initApp();
+  } catch (err) {
+    if (loadingEl) {
+      loadingEl.innerHTML = '<span style="color:#b91c1c">⚠ Andmete laadimine ebaõnnestus: ' + err.message + '</span>' +
+        '<br><small style="color:#6b7280">Veendu, et manifest.json asub index.html-iga samas kaustas.</small>';
+    }
+    console.error('Data load error:', err);
+  }
+}
+
+async function loadAllPeriods(periods) {
+  // Laadi kõik perioodid ja liida kokku RAW_FULL-iks
+  RAW_FULL = {};
+  for (const p of periods) {
+    const resp = await fetch(p.file);
+    if (!resp.ok) throw new Error('HTTP ' + resp.status + ' — ' + p.file);
+    const data = await resp.json();
+    for (const [liin, ld] of Object.entries(data)) {
+      if (!RAW_FULL[liin]) {
+        RAW_FULL[liin] = { trips: [] };
+      }
+      RAW_FULL[liin].trips.push(...ld.trips);
+    }
+  }
+  // Arvuta avg kogu andmestiku põhjal
+  for (const [liin, ld] of Object.entries(RAW_FULL)) {
+    RAW_FULL[liin].n_trips = ld.trips.length;
+    RAW_FULL[liin].avg = calcAvg(ld.trips);
+  }
+  RAW = RAW_FULL;
+}
+
+function calcAvg(trips) {
+  const acc = {};
+  trips.forEach(trip => {
+    trip.stops.forEach(s => {
+      if (!acc[s.jrk]) acc[s.jrk] = { jrk: s.jrk, peatus: s.peatus, b: [], a: [], p: [] };
+      acc[s.jrk].b.push(s.board);
+      acc[s.jrk].a.push(s.alight);
+      acc[s.jrk].p.push(s.pardal);
+    });
+  });
+  return Object.values(acc).sort((a,b) => a.jrk - b.jrk).map(v => ({
+    jrk: v.jrk, peatus: v.peatus,
+    board:  +(v.b.reduce((s,x)=>s+x,0)/v.b.length).toFixed(2),
+    alight: +(v.a.reduce((s,x)=>s+x,0)/v.a.length).toFixed(2),
+    pardal: +(v.p.reduce((s,x)=>s+x,0)/v.p.length).toFixed(2),
+  }));
+}
+
+function filterRawByDates(fromIso, toIso) {
+  RAW = {};
+  for (const [liin, data] of Object.entries(RAW_FULL)) {
+    const filtered = data.trips.filter(t => {
+      if (!t.date) return true;
+      const parts = t.date.split('.');
+      const iso = parts[2] + '-' + parts[1] + '-' + parts[0];
+      return (!fromIso || iso >= fromIso) && (!toIso || iso <= toIso);
+    });
+    if (!filtered.length) continue;
+    RAW[liin] = { n_trips: filtered.length, avg: calcAvg(filtered), trips: filtered };
+  }
+}
+
+function applyCalSelection() {
+  if (calIsAll) {
+    RAW = RAW_FULL;
+  } else {
+    filterRawByDates(dateToIso(calSelStart), dateToIso(calSelEnd));
+  }
+  reinitApp();
+}
+
+function initCalendar() {
+  const trigger  = document.getElementById('cal-trigger');
+  const popup    = document.getElementById('cal-popup');
+  const btnAll   = document.getElementById('cal-btn-all');
+
+  updateTriggerLabel();
+
+  trigger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isOpen = popup.classList.contains('open');
+    popup.classList.toggle('open', !isOpen);
+    trigger.classList.toggle('open', !isOpen);
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!document.getElementById('period-ctrl-group').contains(e.target)) {
+      // Sulge ainult kui vahemik on täielik või pole midagi valitud
+      if (!calSelStart || calSelEnd !== null) {
+        popup.classList.remove('open');
+        trigger.classList.remove('open');
+      }
+    }
+  });
+
+  btnAll.addEventListener('click', () => {
+    calSelStart = new Date(CAL_MIN);
+    calSelEnd   = new Date(CAL_MAX);
+    calIsAll    = true;
+    calViewYear  = CAL_MIN.getFullYear();
+    calViewMonth = CAL_MIN.getMonth();
+    btnAll.classList.add('active');
+    updateTriggerLabel();
+    renderCalGrid();
+    applyCalSelection();
+  });
+
+  document.getElementById('cal-prev').addEventListener('click', () => {
+    calViewMonth--;
+    if (calViewMonth < 0) { calViewMonth = 11; calViewYear--; }
+    renderCalGrid();
+  });
+  document.getElementById('cal-next').addEventListener('click', () => {
+    calViewMonth++;
+    if (calViewMonth > 11) { calViewMonth = 0; calViewYear++; }
+    renderCalGrid();
+  });
+
+  renderCalGrid();
+}
+
+function updateTriggerLabel() {
+  const triggerText = document.getElementById('cal-trigger-text');
+  if (calIsAll) {
+    triggerText.innerHTML = '<span class="cal-trigger-all">Kogu periood</span> &nbsp;' +
+      fmtDisplay(CAL_MIN) + ' – ' + fmtDisplay(CAL_MAX);
+  } else if (calSelStart && calSelEnd) {
+    triggerText.textContent = fmtDisplay(calSelStart) + ' – ' + fmtDisplay(calSelEnd);
+  } else if (calSelStart) {
+    triggerText.textContent = fmtDisplay(calSelStart) + ' – ?';
+  }
+}
+
+function renderCalGrid() {
+  document.getElementById('cal-month-title').textContent =
+    MONTHS_ET[calViewMonth] + ' ' + calViewYear;
+
+  const firstDay = new Date(calViewYear, calViewMonth, 1).getDay();
+  const offset   = (firstDay + 6) % 7;
+  const daysInMonth = new Date(calViewYear, calViewMonth + 1, 0).getDate();
+
+  const grid = document.getElementById('cal-days');
+  grid.innerHTML = '';
+
+  for (let i = 0; i < offset; i++) {
+    const el = document.createElement('div');
+    el.className = 'cal-day cal-empty';
+    grid.appendChild(el);
+  }
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const date = new Date(calViewYear, calViewMonth, d);
+    const el = document.createElement('div');
+    el.className = 'cal-day';
+    el.textContent = d;
+
+    if (date < CAL_MIN || date > CAL_MAX) {
+      el.classList.add('cal-disabled');
+    } else {
+      if (calSelStart && calSelEnd) {
+        if (sameDay(date, calSelStart) && sameDay(date, calSelEnd)) {
+          el.classList.add('cal-start', 'cal-end');
+        } else if (sameDay(date, calSelStart)) {
+          el.classList.add('cal-start');
+        } else if (sameDay(date, calSelEnd)) {
+          el.classList.add('cal-end');
+        } else if (date > calSelStart && date < calSelEnd) {
+          el.classList.add('cal-in-range');
+        }
+      } else if (calSelStart && sameDay(date, calSelStart)) {
+        el.classList.add('cal-start', 'cal-end');
+      }
+      el.addEventListener('click', () => onCalDayClick(date));
+    }
+    grid.appendChild(el);
+  }
+
+  const hint = document.getElementById('cal-hint');
+  if (calSelStart && !calSelEnd) {
+    hint.textContent = 'Vali lõppkuupäev';
+  } else if (calSelStart && calSelEnd && !calIsAll) {
+    const days = Math.round((calSelEnd - calSelStart) / 86400000) + 1;
+    hint.textContent = days + ' päeva';
+  } else {
+    hint.textContent = '';
+  }
+}
+
+function onCalDayClick(date) {
+  calIsAll = false;
+  document.getElementById('cal-btn-all').classList.remove('active');
+
+  if (!calSelStart || calSelEnd) {
+    calSelStart = date; calSelEnd = null;
+  } else {
+    if (date < calSelStart) { calSelEnd = calSelStart; calSelStart = date; }
+    else if (sameDay(date, calSelStart)) { calSelEnd = date; }
+    else { calSelEnd = date; }
+  }
+
+  updateTriggerLabel();
+  renderCalGrid();
+
+  if (calSelStart && calSelEnd) {
+    // Vahemik täielik — sulge kalender ja rakenda filter
+    const popup = document.getElementById('cal-popup');
+    const trigger = document.getElementById('cal-trigger');
+    popup.classList.remove('open');
+    trigger.classList.remove('open');
+    applyCalSelection();
+  }
+}
+
+function reinitApp() {
+  if (typeof chart !== 'undefined' && chart) { chart.destroy(); chart = null; }
+  initApp();
+}
+
+let currentLine = null;
+let currentTrip = 'avg';
+let chart = null;
+
+function initApp() {
+  currentLine = null;
+  currentTrip = 'avg';
+
+const lineSearch = document.getElementById('line-search');
+const lineSel    = document.getElementById('line-select');
+const timeSel    = document.getElementById('time-select');
+const tripSel    = document.getElementById('trip-select');
+const tagTrips   = document.getElementById('tag-trips');
+const tagStops   = document.getElementById('tag-stops');
+const sBoard     = document.getElementById('s-board');
+const sAlight    = document.getElementById('s-alight');
+const sMaxload   = document.getElementById('s-maxload');
+const sAvgload   = document.getElementById('s-avgload');
+const chartTitle = document.getElementById('chart-title-text');
+const chartSub   = document.getElementById('chart-subtitle');
+const tableBox   = document.getElementById('table-container');
+
+const ALL_LINES = Object.keys(RAW).sort((a,b) => a.localeCompare(b, undefined, {numeric:true}));
+
+function populateLines(filter) {
+  const prev = lineSel.value;
+  lineSel.innerHTML = '<option value="">— vali liin —</option>';
+  ALL_LINES
+    .filter(l => !filter || l.toLowerCase().includes(filter.toLowerCase()))
+    .forEach(l => {
+      const o = document.createElement('option');
+      o.value = l;
+      o.textContent = `Liin ${l}  (${RAW[l].n_trips} väljumist)`;
+      if (l === prev) o.selected = true;
+      lineSel.appendChild(o);
+    });
+}
+populateLines();
+
+lineSearch.addEventListener('input', () => {
+  populateLines(lineSearch.value);
+  // Auto-select if exactly one match
+  const matches = ALL_LINES.filter(l => l.toLowerCase().includes(lineSearch.value.toLowerCase()));
+  if (matches.length === 1) {
+    lineSel.value = matches[0];
+    selectLine(matches[0]);
+  }
+});
+
+function populateTimes(liin, filterTime) {
+  const d = RAW[liin];
+  const times = [...new Set(d.trips.map(t => t.time))].sort();
+  timeSel.innerHTML = '<option value="all">Kõik kellaajad</option>';
+  times.forEach(t => {
+    const o = document.createElement('option');
+    o.value = t;
+    const cnt = d.trips.filter(tr => tr.time === t).length;
+    o.textContent = `${t}  (${cnt}×)`;
+    if (t === filterTime) o.selected = true;
+    timeSel.appendChild(o);
+  });
+}
+
+function populateTrips(liin, timeFilter) {
+  const d = RAW[liin];
+  const filtered = (timeFilter === 'all' ? d.trips : d.trips.filter(t => t.time === timeFilter))
+    .slice()
+    .sort((a, b) => {
+      const da = a.date.split('.').reverse().join('') + a.time.replace(':','');
+      const db = b.date.split('.').reverse().join('') + b.time.replace(':','');
+      return da.localeCompare(db);
+    });
+  tripSel.innerHTML = '<option value="avg">⌀ Keskmine profiil</option>';
+  filtered.forEach(t => {
+    const o = document.createElement('option');
+    o.value = t.veoots;
+    o.textContent = `${t.date}  ${t.time}`;
+    tripSel.appendChild(o);
+  });
+  tripSel.value = 'avg';
+}
+
+lineSel.addEventListener('change', () => { if (lineSel.value) selectLine(lineSel.value); });
+timeSel.addEventListener('change', () => {
+  if (!currentLine) return;
+  populateTrips(currentLine, timeSel.value);
+  currentTrip = 'avg';
+  renderChart(); renderTable();
+});
+tripSel.addEventListener('change', () => { currentTrip = tripSel.value; renderChart(); renderTable(); });
+
+function selectLine(liin) {
+  currentLine = liin;
+  currentTrip = 'avg';
+  const d = RAW[liin];
+  populateTimes(liin, 'all');
+  populateTrips(liin, 'all');
+  tagTrips.textContent = `${d.n_trips} väljumist`;
+  tagStops.textContent = `${d.avg.length} peatust`;
+  renderChart();
+  renderTable();
+}
+
+function getStops() {
+  if (!currentLine) return [];
+  const d = RAW[currentLine];
+  const timeFilter = timeSel.value;
+  if (currentTrip === 'avg') {
+    // If a time filter is active, compute average only for that time
+    if (timeFilter !== 'all') {
+      const filtered = d.trips.filter(t => t.time === timeFilter);
+      if (!filtered.length) return d.avg;
+      // Build per-stop averages from filtered trips
+      const byJrk = {};
+      filtered.forEach(trip => {
+        const seen = {};
+        trip.stops.forEach(s => { seen[s.jrk] = s; });
+        Object.values(seen).forEach(s => {
+          if (!byJrk[s.jrk]) byJrk[s.jrk] = {jrk:s.jrk, peatus:s.peatus, boards:[], alights:[], pardals:[]};
+          byJrk[s.jrk].boards.push(s.board);
+          byJrk[s.jrk].alights.push(s.alight);
+          byJrk[s.jrk].pardals.push(s.pardal);
+        });
+      });
+      return Object.values(byJrk).sort((a,b)=>a.jrk-b.jrk).map(s => ({
+        jrk: s.jrk, peatus: s.peatus,
+        board:  +(s.boards.reduce((a,v)=>a+v,0)/s.boards.length).toFixed(2),
+        alight: +(s.alights.reduce((a,v)=>a+v,0)/s.alights.length).toFixed(2),
+        pardal: +(s.pardals.reduce((a,v)=>a+v,0)/s.pardals.length).toFixed(2)
+      }));
+    }
+    return d.avg;
+  }
+  const trip = d.trips.find(t => t.veoots == currentTrip);
+  if (!trip) return d.avg;
+  const seen = {};
+  trip.stops.forEach(s => { seen[s.jrk] = s; });
+  return Object.values(seen).sort((a,b) => a.jrk - b.jrk);
+}
+
+function renderChart() {
+  const stops = getStops();
+  if (!stops.length) return;
+
+  const labels     = stops.map(s => s.peatus);
+  const boardData  = stops.map(s => +(+s.board).toFixed(2));
+  const alightData = stops.map(s => -(+(+s.alight).toFixed(2)));
+  const pardalData = stops.map(s => +(+s.pardal).toFixed(2));
+
+  const totalBoard  = stops.reduce((a,s) => a + +s.board, 0);
+  const totalAlight = stops.reduce((a,s) => a + +s.alight, 0);
+  const maxLoad     = Math.max(...stops.map(s => +s.pardal));
+  const avgLoad     = stops.reduce((a,s) => a + +s.pardal, 0) / stops.length;
+
+  sBoard.textContent   = totalBoard.toFixed(1);
+  sAlight.textContent  = totalAlight.toFixed(1);
+  sMaxload.textContent = maxLoad.toFixed(1);
+  sAvgload.textContent = avgLoad.toFixed(1);
+
+  if (currentTrip === 'avg') {
+    chartTitle.textContent = `Liin ${currentLine} — keskmine profiil`;
+    chartSub.textContent   = `${RAW[currentLine].n_trips} väljumise keskmine`;
+  } else {
+    const trip = RAW[currentLine].trips.find(t => t.veoots == currentTrip);
+    chartTitle.textContent = `Liin ${currentLine} — ${trip.date} ${trip.time}`;
+    chartSub.textContent   = `Veoots ${currentTrip}`;
+  }
+
+  const maxVal = Math.max(...boardData, ...alightData.map(Math.abs), ...pardalData, 1);
+
+  const ctx = document.getElementById('mainChart').getContext('2d');
+  if (chart) chart.destroy();
+
+  chart = new Chart(ctx, {
+    data: {
+      labels,
+      datasets: [
+        {
+          type: 'bar', label: 'Sisenemised', data: boardData,
+          backgroundColor: 'rgba(10,84,182,0.75)', borderColor: '#0A54B6',
+          borderWidth: 1, borderRadius: 3, yAxisID: 'y', order: 2
+        },
+        {
+          type: 'bar', label: 'Väljumised', data: alightData,
+          backgroundColor: 'rgba(207,181,60,0.75)', borderColor: '#CFB53C',
+          borderWidth: 1, borderRadius: 3, yAxisID: 'y', order: 2
+        },
+        {
+          type: 'line', label: 'Täituvus', data: pardalData,
+          borderColor: '#61CE85', backgroundColor: 'rgba(97,206,133,0.06)',
+          borderWidth: 2.5,
+          pointBackgroundColor: '#fff',
+          pointBorderColor: '#61CE85',
+          pointBorderWidth: 2,
+          pointRadius: 4, pointHoverRadius: 6,
+          fill: true, tension: 0.35, yAxisID: 'y', order: 1
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#fff',
+          borderColor: '#dde0e7',
+          borderWidth: 1,
+          titleColor: '#1c2130',
+          bodyColor: '#6b7280',
+          padding: 11,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+          callbacks: {
+            label(ctx) {
+              const v = ctx.raw;
+              if (ctx.dataset.label === 'Väljumised') return `  Väljumised: ${Math.abs(v).toFixed(1)}`;
+              if (ctx.dataset.label === 'Sisenemised') return `  Sisenemised: ${v.toFixed(1)}`;
+              return `  Pardal: ${v.toFixed(1)}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: '#f0f1f4' },
+          ticks: { color: '#9ca3af', font: { family: 'Inter', size: 11 }, maxRotation: 40 },
+          border: { color: '#e5e7eb' }
+        },
+        y: {
+          grid: { color: '#f0f1f4' },
+          ticks: {
+            color: '#9ca3af', font: { family: 'IBM Plex Mono', size: 11 },
+            callback: v => v < 0 ? Math.abs(v) : v
+          },
+          border: { color: '#e5e7eb' },
+          min: -Math.ceil(maxVal * 1.15),
+          max:  Math.ceil(maxVal * 1.15)
+        }
+      }
+    }
+  });
+}
+
+function renderTable() {
+  const stops = getStops();
+  if (!stops.length) { tableBox.innerHTML = '<div class="empty-state">Vali liin</div>'; return; }
+  const isAvg = currentTrip === 'avg';
+  let html = `<table class="detail-table"><thead><tr>
+    <th>#</th><th>Peatus</th>
+    <th>↑ Sisenemised</th><th>↓ Väljumised</th><th>≡ Pardal</th>
+  </tr></thead><tbody>`;
+  stops.forEach(s => {
+    html += `<tr>
+      <td>${s.jrk}</td>
+      <td>${s.peatus}</td>
+      <td class="pos">${(+s.board).toFixed(isAvg?1:0)}</td>
+      <td class="neg">${(+s.alight).toFixed(isAvg?1:0)}</td>
+      <td class="pardal">${(+s.pardal).toFixed(isAvg?1:0)}</td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  tableBox.innerHTML = html;
+}
+
+if (ALL_LINES.length) { lineSel.value = ALL_LINES[0]; selectLine(ALL_LINES[0]); }
+} // end initApp()
+
+// Käivita rakendus
+loadData();
+</script>
+</body>
+</html>
