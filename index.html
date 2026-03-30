@@ -5,13 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Kagu ÜTK liiniprofiilid</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script type="module">
-// DuckDB-WASM ESM import
-import * as duckdb from 'https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0/+esm';
-window._duckdb = duckdb;
-// Käivita rakendus alles pärast DuckDB laadimist
-window.addEventListener('load', () => loadData());
-</script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -461,31 +454,44 @@ async function loadData() {
 }
 
 async function initDuckDB(periods) {
-  const duckdb = window._duckdb;
+  // Laadi DuckDB-WASM dünaamiliselt ESM-ina
+  const duckdb = await import('https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0/+esm');
   const JSDELIVR = 'https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0/dist/';
+
   const bundle = await duckdb.selectBundle({
-    mvp: { mainModule: JSDELIVR + 'duckdb-mvp.wasm', mainWorker: JSDELIVR + 'duckdb-browser-mvp.worker.js' },
-    eh:  { mainModule: JSDELIVR + 'duckdb-eh.wasm',  mainWorker: JSDELIVR + 'duckdb-browser-eh.worker.js'  },
+    mvp: {
+      mainModule: JSDELIVR + 'duckdb-mvp.wasm',
+      mainWorker: JSDELIVR + 'duckdb-browser-mvp.worker.js',
+    },
+    eh: {
+      mainModule: JSDELIVR + 'duckdb-eh.wasm',
+      mainWorker: JSDELIVR + 'duckdb-browser-eh.worker.js',
+    },
   });
-  const worker = await duckdb.createWorker(bundle.mainWorker);
+
+  const workerUrl = URL.createObjectURL(
+    new Blob(['importScripts("' + bundle.mainWorker + '");'], { type: 'text/javascript' })
+  );
+  const worker = new Worker(workerUrl);
   const logger = new duckdb.ConsoleLogger();
   DB = new duckdb.AsyncDuckDB(logger, worker);
   await DB.instantiate(bundle.mainModule);
+  URL.revokeObjectURL(workerUrl);
+
   const conn = await DB.connect();
 
-  // Laadi kõik Parquet failid ühte tabelisse
+  // Laadi kõik Parquet failid
   const views = [];
   for (const p of periods) {
     const resp = await fetch(p.file);
     if (!resp.ok) throw new Error('HTTP ' + resp.status + ' — ' + p.file);
     const buf = await resp.arrayBuffer();
-    const fname = p.file.replace(/\//g, '_').replace(/[^a-zA-Z0-9_.]/g, '_');
+    const fname = p.file.replace(/[^a-zA-Z0-9_.]/g, '_');
     await DB.registerFileBuffer(fname, new Uint8Array(buf));
     views.push(`SELECT * FROM parquet_scan('${fname}')`);
   }
   await conn.query(`CREATE VIEW andmed AS ${views.join(' UNION ALL ')}`);
 
-  // Laadi kogu andmestik RAW_FULL-iks
   await queryToRaw(conn, null, null, true);
   await conn.close();
 }
@@ -509,9 +515,10 @@ async function queryToRaw(conn, fromIso, toIso, isFull) {
 
   // Konverdi Arrow tabel JS objektideks
   const rows = result.toArray().map(r => ({
-    liin: r.liin, veoots: r.veoots, date: r.date, time: r.time,
-    jrk: r.jrk, peatus: r.peatus,
-    board: r.board, alight: r.alight, pardal: r.pardal
+    liin: String(r.liin), veoots: String(r.veoots),
+    date: String(r.date), time: String(r.time),
+    jrk: Number(r.jrk), peatus: String(r.peatus),
+    board: Number(r.board), alight: Number(r.alight), pardal: Number(r.pardal)
   }));
 
   const dest = {};
@@ -988,7 +995,8 @@ function renderTable() {
 if (ALL_LINES.length) { lineSel.value = ALL_LINES[0]; selectLine(ALL_LINES[0]); }
 } // end initApp()
 
-// Rakendus käivitub pärast DuckDB laadimist (vt <script type="module"> päises)
+// Käivita rakendus
+loadData();
 </script>
 </body>
 </html>
